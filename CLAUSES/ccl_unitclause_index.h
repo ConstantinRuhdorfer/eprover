@@ -27,10 +27,16 @@ Copyright 2019-2020 by the author.
 /*                    Data type declarations                           */
 /*---------------------------------------------------------------------*/
 
+/*-----------------------------------------------------------------------
+Datastructure that indexes unit clauses by representing them as a single 
+equals term (e.g. =(lterm, rterm)). This indexing technique should use a
+special Fingerprintindexing function that ignores the first symbol as it 
+is always the same.
+The leaves store the indexed term.
+-----------------------------------------------------------------------*/
 typedef struct unitclause_index_cell 
 {
-   Term_p termL;
-   PTree_p right;
+   Clause_p clause; // The indexed clause
 } UnitClauseIndexCell, *UnitClauseIndexCell_p;
 
 typedef FPIndex_p UnitclauseIndex_p;
@@ -39,27 +45,25 @@ typedef FPIndex_p UnitclauseIndex_p;
 /*                Exported Functions and Variables                     */
 /*---------------------------------------------------------------------*/
 
-void UnitclauseIndexFreeWrapper(void *junk);
-
-#define UnitClauseIndexCellAlloc() (UnitClauseIndexCell*)SizeMalloc(sizeof(UnitClauseIndexCell))
+#define UnitClauseIndexCellAllocRaw() (UnitClauseIndexCell*)SizeMalloc(sizeof(UnitClauseIndexCell))
 #define UnitClauseIndexCellFreeRaw(junk) SizeFree(junk, sizeof(UnitClauseIndexCell))
 
+UnitClauseIndexCell_p UnitClauseIndexCellAlloc();
 bool UnitclauseIndexDeleteClause(UnitclauseIndex_p index, Clause_p clause);
-void UnitclauseIndexDeleteTerm(PObjTree_p *root, Term_p lterm);
-bool UnitclauseIndexDeleteCellTerm(PObjTree_p *root, Term_p lterm, Term_p rterm);
-bool UnitclauseIndexDeleteRightTerm(UnitclauseIndex_p index, Term_p lterm, Term_p rterm);
-
 bool UnitclauseIndexInsertClause(UnitclauseIndex_p index, Clause_p clause);
-bool UnitclauseIndexInsert(UnitclauseIndex_p index, Term_p lterm, Term_p rterm);
+void UnitclauseIndexFreeWrapper(void *junk);
 
 /*---------------------------------------------------------------------*/
 /*                         Internal Functions                          */
 /*---------------------------------------------------------------------*/
 
+void UnitClauseIndexCellFreeWrapper(void *junk);
 void UnitClauseIndexCellFree(UnitClauseIndexCell_p junk);
 int CmpUnitClauseIndexCells(const void* cell1, const void* cell2);
-UnitClauseIndexCell_p UnitclauseInsert(PObjTree_p *root, Term_p lterm);
-void UnitClauseIndexCellFreeWrapper(void *junk);
+UnitClauseIndexCell_p UnitclauseInsertCell(PObjTree_p *root, Clause_p clause);
+bool UnitclauseIndexDeleteIndexedClause(UnitclauseIndex_p index, 
+                                        Term_p indexedterm,
+                                        Clause_p indexed);
 
 #endif
 
