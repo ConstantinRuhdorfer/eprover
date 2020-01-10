@@ -586,10 +586,6 @@ void ClauseSetIndexedInsert(ClauseSet_p set, FVPackedClause_p newclause)
    {
       ClauseSetPDTIndexedInsert(set, newclause->clause);
    }
-   // if(set->clauseset_indexes)
-   // {
-   //    ClausesetIndexInsertNewClause(set->clauseset_indexes, newclause);  
-   // }
    if(set->fvindex)
    {
       FVIndexInsert(set->fvindex, newclause);
@@ -2155,7 +2151,6 @@ PermVector_p PermVectorCompute(ClauseSet_p set, FVCollect_p cspec,
 
 long ClauseSetFVIndexify(ClauseSet_p set)
 {
-   // TODO: This now covers the hole clauseset_index
    PStack_p stack = PStackAlloc();
    Clause_p clause;
 
@@ -2174,25 +2169,6 @@ long ClauseSetFVIndexify(ClauseSet_p set)
    }
    PStackFree(stack);
    return set->members;
-
-   // PStack_p stack = PStackAlloc();
-   // Clause_p clause;
-
-   // assert(set);
-   // assert(set->clauseset_indexes);
-
-   // while((clause = ClauseSetExtractFirst(set)))
-   // {
-   //    PStackPushP(stack, clause);
-   // }
-   // while(!PStackEmpty(stack))
-   // {
-   //    clause = PStackPopP(stack);
-   //    assert(clause->weight == ClauseStandardWeight(clause));
-   //    ClauseSetIndexedInsertClause(set, clause);
-   // }
-   // PStackFree(stack);
-   // return set->members;
 }
 
 
