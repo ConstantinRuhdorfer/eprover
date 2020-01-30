@@ -319,19 +319,19 @@ ClauseSet_p ClauseSetAlloc(void)
 
    handle = ClauseSetCellAlloc();
 
-   handle->members = 0;
+   handle->members  = 0;
    handle->literals = 0;
-   handle->anchor = ClauseCellAlloc();
+   handle->anchor   = ClauseCellAlloc();
    handle->anchor->literals = NULL;
    handle->anchor->pred = handle->anchor->succ = handle->anchor;
    handle->date = SysDateCreationTime();
    SysDateInc(&handle->date);
+   handle->demod_index                = NULL;
    handle->efficent_subsumption_index = NULL;
 
    handle->eval_indices = PDArrayAlloc(4,4);
-   handle->eval_no = 0;
-
-   handle->identifier = DStrAlloc();
+   handle->eval_no      = 0;
+   handle->identifier   = DStrAlloc();
 
    return handle;
 }
@@ -561,7 +561,6 @@ void ClauseSetPDTIndexedInsert(ClauseSet_p set, Clause_p newclause)
 }
 
 
-
 /*-----------------------------------------------------------------------
 //
 // Function: ClauseSetIndexedInsertClause()
@@ -587,36 +586,11 @@ void ClauseSetIndexedInsertClause(ClauseSet_p set, Clause_p newclause)
    }
    if(set->efficent_subsumption_index)
    {
-      // TODO: Clean this up.
-      // FVIndexInsert(set->efficent_subsumption_index->fvindex, newclause);
       EfficentSubsumptionIndexInsertClause(set->efficent_subsumption_index, 
                                            newclause);
       ClauseSetProp(newclause, CPIsSIndexed);
    }
 }
-
-
-// TODO: Clean this up.
-// /*-----------------------------------------------------------------------
-// //
-// // Function: ClauseSetIndexedInsertClause()
-// //
-// //   Insert a plain clause into the set, taking care od of
-// //   all existing indexes.
-// //
-// // Global Variables: -
-// //
-// // Side Effects    : -
-// //
-// /----------------------------------------------------------------------*/
-
-// void ClauseSetIndexedInsertClause(ClauseSet_p set, Clause_p newclause)
-// {
-//    FVPackedClause_p pclause = FVIndexPackClause(newclause, set->efficent_subsumption_index->fvindex);
-//    assert(newclause->weight == ClauseStandardWeight(newclause));
-//    ClauseSetIndexedInsert(set, pclause);
-//    FVUnpackClause(pclause);
-// }
 
 
 /*-----------------------------------------------------------------------

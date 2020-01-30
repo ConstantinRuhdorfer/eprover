@@ -19,14 +19,6 @@ Copyright 2019-2020 by the author.
 #include <ccl_efficent_subsumption_index.h>
 
 /*---------------------------------------------------------------------*/
-/*                        Global Variables                             */
-/*---------------------------------------------------------------------*/
-
-/*---------------------------------------------------------------------*/
-/*                      Forward Declarations                           */
-/*---------------------------------------------------------------------*/
-
-/*---------------------------------------------------------------------*/
 /*                         Internal Functions                          */
 /*---------------------------------------------------------------------*/
 
@@ -48,6 +40,7 @@ void EfficentSubsumptionIndexInsert(EfficentSubsumptionIndex_p index,
    if(index->unitclasue_index && ClauseIsUnit(newclause->clause))
    {
       // TODO: Maybe index unitclauses into both?
+      // Notice that this question is seperate from checking both indexes.
       UnitclauseIndexInsertClause(index->unitclasue_index, newclause->clause);
    } 
    if (index->fvindex) 
@@ -75,9 +68,8 @@ EfficentSubsumptionIndex_p EfficentSubsumptionIndexAlloc(FVCollect_p cspec,
                                                          PermVector_p perm)
 {
    EfficentSubsumptionIndex_p handle = EfficentSubsumptionIndexAllocRaw();
-   handle->fvindex                   = FVIAnchorAlloc(cspec, PermVectorCopy(perm));
+   handle->fvindex                   = FVIAnchorAlloc(cspec, perm);
    handle->unitclasue_index          = NULL;
-   handle->sig                       = NULL;
    return handle;
 }
 
@@ -97,13 +89,10 @@ void EfficentSubsumptionIndexFree(EfficentSubsumptionIndex_p index)
    if (index->fvindex) 
    {
       FVIAnchorFree(index->fvindex);
-      index->fvindex = NULL;
    }
    if (index->unitclasue_index)
    {
       FPIndexFree(index->unitclasue_index);
-      index->unitclasue_index = NULL;
-      index->sig              = NULL;
    }
    EfficentSubsumptionIndexFreeRaw(index);
 }
@@ -123,12 +112,8 @@ void EfficentSubsumptionIndexUnitClauseIndexInit(EfficentSubsumptionIndex_p inde
                                                  Sig_p sig, 
                                                  char* unitclause_index_type)
 {
-   assert(sig);
    FPIndexFunction indexfun;
-   index->sig              = sig;
    indexfun                = GetFPIndexFunction(unitclause_index_type);
-   assert(indexfun);
-   strcpy(index->unitclause_index_type, unitclause_index_type);
    index->unitclasue_index = FPIndexAlloc(indexfun, sig, UnitclauseIndexFreeWrapper);
 }
 
@@ -136,7 +121,7 @@ void EfficentSubsumptionIndexUnitClauseIndexInit(EfficentSubsumptionIndex_p inde
 //
 // Function: EfficentSubsumptionIndexInsertClause()
 //
-//   Inserts a clause into the efficent subsumption indexes.
+//   Inserts a clause into the efficent subsumption index.
 //
 // Global Variables: -
 //

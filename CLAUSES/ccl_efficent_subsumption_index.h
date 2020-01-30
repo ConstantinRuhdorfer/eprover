@@ -30,8 +30,6 @@ typedef struct efficent_subsumption_index
 {
    FVIAnchor_p       fvindex;          /* Used for non-unit subsumption */
    UnitclauseIndex_p unitclasue_index; /* Used for unit clauses subsuption */
-   char              unitclause_index_type[MAX_PM_INDEX_NAME_LEN];
-   Sig_p             sig;
 } EfficentSubsumptionIndex, *EfficentSubsumptionIndex_p;
 
 
@@ -44,7 +42,7 @@ typedef struct efficent_subsumption_index
 #define EfficentSubsumptionIndexFreeRaw(junk) SizeFree(junk, sizeof(junk))
 
 // TODO: FPIndexStorage?
-// #define EfficentSubsumptionIndexStorgae(index)\
+// #define EfficentSubsumptionIndexStorgae(index)
 //         (FVIndexStorage(index->fvindex))
 
 EfficentSubsumptionIndex_p EfficentSubsumptionIndexAlloc(FVCollect_p cspec,

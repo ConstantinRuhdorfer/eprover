@@ -975,7 +975,6 @@ Clause_p clauseset_find_first_subsumed_clause(ClauseSet_p set,
 }
 
 
-
 /*-----------------------------------------------------------------------
 //
 // Function: clauseset_find_subsumed_clauses_indexed()
@@ -990,10 +989,10 @@ Clause_p clauseset_find_first_subsumed_clause(ClauseSet_p set,
 /----------------------------------------------------------------------*/
 
 static
-void clauseset_find_subsumed_clauses_indexed(FVIndex_p index,
-                                             FreqVector_p vec,
-                                             long feature,
-                                             PStack_p res)
+void clauseset_find_subsumed_clauses_fv_indexed(FVIndex_p index,
+                                                FreqVector_p vec,
+                                                long feature,
+                                                PStack_p res)
 {
    if(feature == vec->size)
    {
@@ -1011,11 +1010,87 @@ void clauseset_find_subsumed_clauses_indexed(FVIndex_p index,
       {
          if(next->clause_count)
          {
-            clauseset_find_subsumed_clauses_indexed(next, vec,
-                                                    feature+1, res);
+            clauseset_find_subsumed_clauses_fv_indexed(next, vec,
+                                                       feature+1, res);
          }
       }
       IntMapIterFree(iter);
+   }
+}
+
+/*-----------------------------------------------------------------------
+//
+// Function: clauseset_find_subsumed_clauses_unitclause_indexed()
+//
+//   Find all clauses subsumed by clause in index and push them
+//   onto res.
+//   TODO: This should be more elegant.
+//
+// Global Variables: -
+//
+// Side Effects    : -
+//
+/----------------------------------------------------------------------*/
+
+static
+void clauseset_find_subsumed_clauses_unitclause_indexed(UnitclauseIndex_p index,
+                                                        Clause_p clause,
+                                                        PStack_p res)
+{
+   PStack_p   iterstack;
+   PTree_p    candidateTree;
+   PTree_p    current;
+   long       numberSubsumedClauses = 0;
+   PStack_p   candidates            = PStackAlloc();
+   
+   UnitClauseIndexFindSubsumedCandidates(index, clause, candidates);
+
+   while(!PStackEmpty(candidates))
+   {
+      candidateTree = PStackPopP(candidates);
+      iterstack     = PTreeTraverseInit(candidateTree);
+
+      while((current = PTreeTraverseNext(iterstack)))
+      {
+         Clause_p candidate = current->key;
+
+         if(clause_subsumes_clause(clause, candidate))
+         {
+            PStackPushP(res, candidate);
+            numberSubsumedClauses += 1;
+            // TODO: Is this counting correct?
+         }
+      }
+      PTreeTraverseExit(iterstack);
+   }
+   PStackFree(candidates);
+}
+
+/*-----------------------------------------------------------------------
+//
+// Function: clauseset_find_subsumed_clauses_indexed()
+//
+//   Finds all clauses subsumed by subsumer in the efficent_subsumption_index.
+//
+// Global Variables: -
+//
+// Side Effects    : -
+//
+/----------------------------------------------------------------------*/
+static
+void clauseset_find_subsumed_clauses_indexed(EfficentSubsumptionIndex_p index,
+                                             FVPackedClause_p subsumer,
+                                             PStack_p res)
+{
+   if(index->fvindex)
+   {
+      clauseset_find_subsumed_clauses_fv_indexed(index->fvindex->index,
+                                                 subsumer, 0, res);
+   }
+   if(index->unitclasue_index && ClauseIsUnit(subsumer->clause))
+   {
+      clauseset_find_subsumed_clauses_unitclause_indexed(index->unitclasue_index, 
+                                                         subsumer->clause, res);
    }
 }
 
@@ -1034,7 +1109,7 @@ void clauseset_find_subsumed_clauses_indexed(FVIndex_p index,
 /----------------------------------------------------------------------*/
 
 static
-Clause_p clauseset_find_first_subsumed_clause_indexed(FVIndex_p index,
+Clause_p clauseset_find_first_subsumed_clause_fv_indexed(FVIndex_p index,
                                                       FreqVector_p vec,
                                                       long feature)
 {
@@ -1056,9 +1131,9 @@ Clause_p clauseset_find_first_subsumed_clause_indexed(FVIndex_p index,
       {
          if(next->clause_count)
          {
-            res = clauseset_find_first_subsumed_clause_indexed(next,
-                                                               vec,
-                                                               feature+1);
+            res = clauseset_find_first_subsumed_clause_fv_indexed(next,
+                                                                  vec,
+                                                                  feature+1);
          }
       }
       IntMapIterFree(iter);
@@ -1067,6 +1142,84 @@ Clause_p clauseset_find_first_subsumed_clause_indexed(FVIndex_p index,
 }
 
 
+/*-----------------------------------------------------------------------
+//
+// Function: clauseset_find_first_subsumed_clauses_unitclause_indexed()
+//
+//   Find the first clause subsumed by clause in index and return it.
+//   TODO: This should be more elegant.
+//
+// Global Variables: -
+//
+// Side Effects    : -
+//
+/----------------------------------------------------------------------*/
+
+static
+Clause_p clauseset_find_first_subsumed_clauses_unitclause_indexed(UnitclauseIndex_p index,
+                                                                  Clause_p clause)
+{
+   PStack_p   iterstack;
+   PTree_p    candidateTree;
+   PTree_p    current;
+   PStack_p   candidates = PStackAlloc();
+   
+   UnitClauseIndexFindSubsumedCandidates(index, clause, candidates);
+
+   while(!PStackEmpty(candidates))
+   {
+      candidateTree = PStackPopP(candidates);
+      iterstack     = PTreeTraverseInit(candidateTree);
+
+      while((current = PTreeTraverseNext(iterstack)))
+      {
+         Clause_p candidate = current->key;
+
+         if(clause_subsumes_clause(clause, candidate))
+         {
+            PTreeTraverseExit(iterstack);
+            PStackFree(candidates);
+            return candidate;
+         }
+      }
+      PTreeTraverseExit(iterstack);
+   }
+   PStackFree(candidates);
+   return NULL;
+}
+
+
+/*-----------------------------------------------------------------------
+//
+// Function: clauseset_find_first_subsumed_clause_indexed()
+//
+//   Find and return the first clause in the indexed set that is
+//   subsumed by vec.
+//
+// Global Variables: -
+//
+// Side Effects    : -
+//
+/----------------------------------------------------------------------*/
+
+static
+Clause_p clauseset_find_first_subsumed_clause_indexed(EfficentSubsumptionIndex_p index,
+                                                      FVPackedClause_p subsumer)
+{
+   Clause_p res = NULL;
+
+   if(index->fvindex)
+   {
+      res = clauseset_find_first_subsumed_clause_fv_indexed(index->fvindex->index,
+                                                         subsumer, 0);
+   }
+   if(index->unitclasue_index && res == NULL && ClauseIsUnit(subsumer->clause))
+   {
+      res = clauseset_find_first_subsumed_clauses_unitclause_indexed(index->unitclasue_index, 
+                                                                     subsumer->clause);
+   }
+   return res;
+}
 
 
 /*-----------------------------------------------------------------------
@@ -1466,7 +1619,7 @@ Clause_p ClauseSetSubsumesFVPackedClause(ClauseSet_p set,
 // Global Variables: -
 //
 // Side Effects    : Memory operations
-//
+//s
 /----------------------------------------------------------------------*/
 
 Clause_p ClauseSetSubsumesClause(ClauseSet_p set, Clause_p sub_candidate)
@@ -1529,30 +1682,30 @@ Clause_p ClauseSetFindSubsumedClause(ClauseSet_p set, Clause_p
 
 /*-----------------------------------------------------------------------
 //
-// Function: ClauseSetFindFVSubsumedClauses()
+// Function: ClauseSetFindESISubsumedClauses()
 //
 //   Find all clauses in set that are subsumed by subsumer, and push
 //   them onto stack. Return number of clauses found.
 //
-// Global Variables:
+// Global Variables: -
 //
-// Side Effects    :
+// Side Effects    : -
 //
 /----------------------------------------------------------------------*/
 
-long ClauseSetFindFVSubsumedClauses(ClauseSet_p set,
-                                    FVPackedClause_p subsumer,
-                                    PStack_p res)
+long ClauseSetFindESISubsumedClauses(ClauseSet_p set,
+                                     FVPackedClause_p subsumer,
+                                     PStack_p res)
 {
    long old_sp = PStackGetSP(res);
 
    PERF_CTR_ENTRY(SetSubsumeTimer);
    assert(subsumer->clause->weight == ClauseStandardWeight(subsumer->clause));
 
-   if(set->efficent_subsumption_index->fvindex)
+   if(set->efficent_subsumption_index)
    {
-      clauseset_find_subsumed_clauses_indexed(set->efficent_subsumption_index->fvindex->index,
-                                              subsumer, 0, res);
+      clauseset_find_subsumed_clauses_indexed(set->efficent_subsumption_index,
+                                              subsumer, res);
    }
    else
    {
@@ -1566,7 +1719,7 @@ long ClauseSetFindFVSubsumedClauses(ClauseSet_p set,
 
 /*-----------------------------------------------------------------------
 //
-// Function: ClauseSetFindFirstFVSubsumedClause()
+// Function: ClauseSetFindFirstESISubsumedClauses()
 //
 //   Find and return first clause in set that is subsumed by subsumer
 //   (or NULL).
@@ -1577,8 +1730,8 @@ long ClauseSetFindFVSubsumedClauses(ClauseSet_p set,
 //
 /----------------------------------------------------------------------*/
 
-Clause_p ClauseSetFindFirstFVSubsumedClause(ClauseSet_p set,
-                                            FVPackedClause_p subsumer)
+Clause_p ClauseSetFindFirstESISubsumedClauses(ClauseSet_p set,
+                                              FVPackedClause_p subsumer)
 {
    Clause_p res;
 
@@ -1587,8 +1740,8 @@ Clause_p ClauseSetFindFirstFVSubsumedClause(ClauseSet_p set,
 
    if(set->efficent_subsumption_index->fvindex)
    {
-      res = clauseset_find_first_subsumed_clause_indexed(set->efficent_subsumption_index->fvindex->index,
-                                                   subsumer, 0);
+      res = clauseset_find_first_subsumed_clause_indexed(set->efficent_subsumption_index,
+                                                         subsumer);
    }
    else
    {
@@ -1624,7 +1777,7 @@ long ClauseSetFindSubsumedClauses(ClauseSet_p set,
 
    pclause = FVIndexPackClause(subsumer, set->efficent_subsumption_index->fvindex);
 
-   found = ClauseSetFindFVSubsumedClauses(set, pclause, res);
+   found = ClauseSetFindESISubsumedClauses(set, pclause, res);
 
    FVUnpackClause(pclause);
    ENSURE_NULL(pclause);
@@ -1656,7 +1809,7 @@ Clause_p ClauseSetFindFirstSubsumedClause(ClauseSet_p set,
 
    pclause = FVIndexPackClause(subsumer, set->efficent_subsumption_index->fvindex);
 
-   res = ClauseSetFindFirstFVSubsumedClause(set, pclause);
+   res = ClauseSetFindFirstESISubsumedClauses(set, pclause);
 
    FVUnpackClause(pclause);
    ENSURE_NULL(pclause);
