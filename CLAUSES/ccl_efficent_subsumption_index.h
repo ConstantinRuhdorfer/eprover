@@ -32,6 +32,7 @@ typedef struct efficent_subsumption_index
    UnitclauseIndex_p unitclasue_index; /* Used for unit clauses subsuption */
 } EfficentSubsumptionIndex, *EfficentSubsumptionIndex_p;
 
+typedef long REWRITE_CONSTANT;
 
 /*---------------------------------------------------------------------*/
 /*                Exported Functions and Variables                     */
@@ -59,6 +60,9 @@ Clause_p ClausesetIndexDeleteEntry(EfficentSubsumptionIndex_p index,
 /*---------------------------------------------------------------------*/
 /*                         Internal Functions                          */
 /*---------------------------------------------------------------------*/
+
+void RewriteConstants(Clause_p clause);
+Term_p RewriteConstantsOnTerm(Term_p term);
 
 void EfficentSubsumptionIndexInsert(EfficentSubsumptionIndex_p index, 
                                     FVPackedClause_p newclause);
