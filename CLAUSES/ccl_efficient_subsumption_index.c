@@ -128,7 +128,7 @@ void EfficientSubsumptionIndexUnitClauseIndexInit(EfficientSubsumptionIndex_p in
 /----------------------------------------------------------------------*/
 void EfficientSubsumptionIndexInsertClause(EfficientSubsumptionIndex_p index, 
                                           Clause_p clause)
-{ 
+{
    FVPackedClause_p pclause = FVIndexPackClause(clause, index->fvindex);
    assert(clause->weight == ClauseStandardWeight(clause));
    EfficientSubsumptionIndexInsert(index, pclause);
@@ -162,3 +162,7 @@ Clause_p ClausesetIndexDeleteEntry(EfficientSubsumptionIndex_p index,
    }
    return junk;
 }
+
+/*---------------------------------------------------------------------*/
+/*                        End of File                                  */
+/*---------------------------------------------------------------------*/

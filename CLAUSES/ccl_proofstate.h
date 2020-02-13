@@ -30,6 +30,7 @@
 #include <ccl_garbage_coll.h>
 #include <ccl_global_indices.h>
 #include <picosat.h>
+#include <ccl_clause_abstraction.h>
 
 /*---------------------------------------------------------------------*/
 /*                    Data type declarations                           */
@@ -44,6 +45,7 @@ typedef struct proofstatecell
    long          original_symbols;
    TB_p          terms;
    TB_p          tmp_terms;
+   TB_p          softsubsumption_rw;
    VarBank_p     freshvars;
    GCAdmin_p     gc_terms;
    FormulaSet_p  f_ax_archive;
@@ -144,7 +146,9 @@ void         ProofStateLoadWatchlist(ProofState_p state,
                                      IOFormat parse_format);
 
 
-void         ProofStateInitWatchlist(ProofState_p state, OCB_p ocb);
+void ProofStateInitWatchlist(ProofState_p state, OCB_p ocb, 
+                             bool rewriteConstants, bool rewriteSkolemSym,
+                             char* watchlist_unit_clause_index_type);
 void         ProofStateResetClauseSets(ProofState_p state, bool term_gc);
 void         ProofStateFree(ProofState_p junk);
 //void         ProofStateGCMarkTerms(ProofState_p state);
@@ -157,9 +161,10 @@ void         ProofStateFree(ProofState_p junk);
     ClauseSetStorage((state)->processed_neg_units)+     \
     ClauseSetStorage((state)->processed_non_units)+     \
     ClauseSetStorage((state)->archive)+                 \
-    TBStorage((state)->terms))
+    TBStorage((state)->terms)+                         \
+    TBStorage((state)->softsubsumption_rw))
 
-#define      ProofStateProcCardinality(state)          \
+#define      ProofStateProcCardinality(state)             \
    (ClauseSetCardinality((state)->processed_pos_rules)+   \
     ClauseSetCardinality((state)->processed_pos_eqns)+    \
     ClauseSetCardinality((state)->processed_neg_units)+   \

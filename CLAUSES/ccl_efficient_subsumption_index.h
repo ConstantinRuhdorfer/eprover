@@ -32,7 +32,6 @@ typedef struct efficient_subsumption_index
    UnitclauseIndex_p unitclasue_index; /* Used for unit clauses subsuption */
 } EfficientSubsumptionIndex, *EfficientSubsumptionIndex_p;
 
-
 /*---------------------------------------------------------------------*/
 /*                Exported Functions and Variables                     */
 /*---------------------------------------------------------------------*/

@@ -132,6 +132,8 @@ static long remove_subsumed(GlobalIndices_p indices,
    {
       // TODO: Überprüfen ob diese Query immer safe ist (Kurzes nachschauen sagt wahrscheinlich ja!)
       handle = PStackPopP(stack);
+      ClausePrint(stdout, handle, true);
+      printf("\n");
       
       if(ClauseQueryProp(handle, CPIsDead)) {
          continue;
@@ -385,26 +387,46 @@ static long eliminate_context_sr_clauses(ProofState_p state,
 
 void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
                      Clause_p clause, ClauseSet_p archive,
-                     bool static_watchlist)
+                     bool static_watchlist, ProofState_p state, 
+                     ProofControl_p control)
 {
    FVPackedClause_p pclause;
-   long removed;
+   Clause_p         rewrite;
+   long             removed;
 
    if(watchlist)
    {
-      // TODO: Fix all ->efficient_subsumption_index->fvindex
-      pclause = FVIndexPackClause(clause, watchlist->efficient_subsumption_index->fvindex);
-      // printf("# check_watchlist(%p)...\n", indices);
-      ClauseSubsumeOrderSortLits(clause);
-      // assert(ClauseIsSubsumeOrdered(clause));
-
-      clause->weight = ClauseStandardWeight(clause);
+      if (control->heuristic_parms.wl_abstract_constant_sym)
+      {
+         rewrite = ClauseCopy(clause, state->softsubsumption_rw);
+         RewriteConstants(rewrite);
+         // TODO: Fix all ->efficent_subsumption_index->fvindex
+         pclause = FVIndexPackClause(rewrite, watchlist->efficient_subsumption_index->fvindex);
+         // printf("# check_watchlist(%p)...\n", indices);
+         ClauseSubsumeOrderSortLits(rewrite);
+         rewrite->weight = ClauseStandardWeight(rewrite);
+         // assert(ClauseIsSubsumeOrdered(clause));
+      } else {
+         pclause = FVIndexPackClause(clause, watchlist->efficient_subsumption_index->fvindex);
+         // printf("# check_watchlist(%p)...\n", indices);
+         ClauseSubsumeOrderSortLits(clause);
+         clause->weight = ClauseStandardWeight(clause);
+      }
 
       if(static_watchlist)
       {
          Clause_p subsumed;
 
-         subsumed = ClauseSetFindFirstSubsumedClause(watchlist, clause);
+         if (rewrite != NULL)
+         {
+            subsumed = ClauseSetFindFirstSubsumedClause(watchlist, rewrite);
+         }
+         else
+         {
+            subsumed = ClauseSetFindFirstSubsumedClause(watchlist, clause);
+         }
+         
+         
          if(subsumed)
          {
             ClauseSetProp(clause, CPSubsumesWatch);
@@ -449,8 +471,8 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
                         Clause_p clause)
 {
    ClauseSet_p tmp_set;
-   Clause_p handle;
-   long     removed_lits;
+   Clause_p    handle;
+   long        removed_lits;
 
    if(!ClauseIsDemodulator(clause))
    {
@@ -496,9 +518,18 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
       }
       handle->weight = ClauseStandardWeight(handle);
       ClauseMarkMaximalTerms(control->ocb, handle);
-      ClauseSetIndexedInsertClause(state->watchlist, handle);
-      // printf("# WL Inserting: "); ClausePrint(stdout, handle, true); printf("\n");
-      GlobalIndicesInsertClause(&(state->wlindices), handle);
+      if(control->heuristic_parms.wl_abstract_constant_sym)
+      {
+         Clause_p rewrite = ClauseCopy(handle, state->softsubsumption_rw);
+         RewriteConstants(rewrite);
+         ClauseSetIndexedInsertClause(state->watchlist, rewrite);
+         GlobalIndicesInsertClause(&(state->wlindices), rewrite);
+      }
+      else
+      {
+         // printf("# WL Inserting: "); ClausePrint(stdout, handle, true); printf("\n");
+         GlobalIndicesInsertClause(&(state->wlindices), clause);
+      }
    }
    ClauseSetFree(tmp_set);
    // printf("# ...simplify_watchlist()\n");
@@ -667,7 +698,8 @@ static Clause_p insert_new_clauses(ProofState_p state, ProofControl_p control)
       }
       check_watchlist(&(state->wlindices), state->watchlist,
                       handle, state->archive,
-                      control->heuristic_parms.watchlist_is_static);
+                      control->heuristic_parms.watchlist_is_static,
+                      state, control);
       if(ClauseIsEmpty(handle))
       {
          return handle;
@@ -1357,7 +1389,10 @@ void ProofStateInit(ProofState_p state, ProofControl_p control)
    {
       fvi_param_init(state, control);
    }
-   ProofStateInitWatchlist(state, control->ocb);
+   ProofStateInitWatchlist(state, control->ocb, 
+                           control->heuristic_parms.wl_abstract_constant_sym,
+                           control->heuristic_parms.wl_abstract_skolem_sym,
+                           control->heuristic_parms.watchlist_unit_clause_index_type);
 
    tmphcb = GetHeuristic("Uniq", state, control, &(control->heuristic_parms));
    assert(tmphcb);
@@ -1374,7 +1409,8 @@ void ProofStateInit(ProofState_p state, ProofControl_p control)
       ClauseSetProp(new, CPInitial);
       check_watchlist(&(state->wlindices), state->watchlist,
                       new, state->archive,
-                      control->heuristic_parms.watchlist_is_static);
+                      control->heuristic_parms.watchlist_is_static,
+                      state, control);
       HCBClauseEvaluate(control->hcb, new);
       DocClauseQuoteDefault(6, new, "eval");
       ClausePushDerivation(new, DCCnfQuote, handle, NULL);
@@ -1511,7 +1547,8 @@ Clause_p ProcessClause(ProofState_p state, ProofControl_p control,
 
    check_watchlist(&(state->wlindices), state->watchlist,
                       pclause->clause, state->archive,
-                      control->heuristic_parms.watchlist_is_static);
+                      control->heuristic_parms.watchlist_is_static,
+                      state, control);
 
    /* Now on to backward simplification. */
    clausedate = ClauseSetListGetMaxDate(state->demods, FullRewrite);
