@@ -1402,6 +1402,9 @@ void ProofStateInit(ProofState_p state, ProofControl_p control)
    HCB_p    tmphcb;
    PStack_p traverse;
    Eval_p   cell;
+   char*    watchlist_unit_clause_index_type = DetermineWatchlistUCIndexType(
+      control->heuristic_parms.watchlist_unit_clause_index_type, 
+      control->problem_specs.eq_content);
 
    OUTPRINT(1, "# Initializing proof state\n");
 
@@ -1417,7 +1420,7 @@ void ProofStateInit(ProofState_p state, ProofControl_p control)
    ProofStateInitWatchlist(state, control->ocb, 
                            control->heuristic_parms.wl_abstract_constant_sym,
                            control->heuristic_parms.wl_abstract_skolem_sym,
-                           control->heuristic_parms.watchlist_unit_clause_index_type);
+                           watchlist_unit_clause_index_type);
 
    tmphcb = GetHeuristic("Uniq", state, control, &(control->heuristic_parms));
    assert(tmphcb);
@@ -1477,6 +1480,47 @@ void ProofStateInit(ProofState_p state, ProofControl_p control)
                      control->heuristic_parms.pm_from_index_type,
                      control->heuristic_parms.pm_into_index_type);
 
+}
+
+/*-----------------------------------------------------------------------
+//
+// Function: DetermineWatchlistUCIndexType()
+//
+//   Determines which finger print function to use when 
+///  watchlistUnitClauseIndexType is auto.
+//   Otherwise it will just default to the provided string.
+//
+// Global Variables: - 
+//
+// Side Effects    : -
+//
+/----------------------------------------------------------------------*/
+char* DetermineWatchlistUCIndexType(char* watchlistUnitClauseIndexType,
+                                  SpecFeatures problem_eq_content)
+{
+   char* watchlist_unit_clause_index_type = watchlistUnitClauseIndexType;
+
+   if(strcmp(watchlistUnitClauseIndexType,"auto")==0)
+   {
+      switch (problem_eq_content)
+      {
+      // TODO: Refactor
+      case SpecNoEq:
+         watchlist_unit_clause_index_type = "FPWatchlist6L";
+         break;
+      case SpecSomeEq:
+         watchlist_unit_clause_index_type = "FPWatchlist6LL";
+         break;
+      case SpecPureEq:
+         watchlist_unit_clause_index_type = "FPWatchlist6";
+         break;
+      default:
+         watchlist_unit_clause_index_type = "FPWatchlist6";
+         break;
+      }
+   }
+
+   return watchlist_unit_clause_index_type;
 }
 
 
