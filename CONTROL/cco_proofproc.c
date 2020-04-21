@@ -405,7 +405,6 @@ void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
       {
          rewrite = ClauseCopy(clause, state->softsubsumption_rw);
          RewriteConstants(rewrite, state->softsubsumption_rw, watchlist->wl_abstraction_symbols);
-         // TODO: Fix all ->efficent_subsumption_index->fvindex
          pclause = FVIndexPackClause(rewrite, watchlist->efficient_subsumption_index->fvindex);
          ClauseSubsumeOrderSortLits(rewrite);
          rewrite->weight = ClauseStandardWeight(rewrite);
@@ -418,7 +417,7 @@ void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
          pclause = FVIndexPackClause(rewrite, watchlist->efficient_subsumption_index->fvindex);
          ClauseSubsumeOrderSortLits(rewrite);
          rewrite->weight = ClauseStandardWeight(rewrite);
-      } 
+      }   
       else 
       {
          pclause = FVIndexPackClause(clause, watchlist->efficient_subsumption_index->fvindex);
@@ -461,6 +460,10 @@ void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
             DocClauseQuote(GlobalOut, OutputLevel, 6, clause,
                            "extract_subsumed_watched", NULL);   }
       }
+      if (rewrite != NULL)
+      {
+         ClauseFree(rewrite);
+      }
       FVUnpackClause(pclause);
       // printf("# ...check_watchlist()\n");
    }
@@ -486,10 +489,9 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
                         Clause_p clause)
 {
    ClauseSet_p tmp_set;
-   Clause_p    handle;
-   Clause_p    rewrite;
-   long        removed_lits;
-
+   Clause_p handle;
+   Clause_p rewrite;
+   long     removed_lits;
 
    if(!ClauseIsDemodulator(clause))
    {
@@ -541,6 +543,7 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
          RewriteConstants(rewrite, state->softsubsumption_rw, state->watchlist->wl_abstraction_symbols);
          ClauseSetIndexedInsertClause(state->watchlist, rewrite);
          GlobalIndicesInsertClause(&(state->wlindices), rewrite);
+         ClauseFree(rewrite);
       }
       else if(state->watchlist->wl_skolemsym_abstraction)
       {
@@ -549,15 +552,16 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
                               state->watchlist->wl_abstraction_symbols, state->signature);
          ClauseSetIndexedInsertClause(state->watchlist, rewrite);
          GlobalIndicesInsertClause(&(state->wlindices), rewrite);
+         ClauseFree(rewrite);
       }
       else
       {
+         ClauseSetIndexedInsertClause(state->watchlist, handle);
          // printf("# WL Inserting: "); ClausePrint(stdout, handle, true); printf("\n");
-         GlobalIndicesInsertClause(&(state->wlindices), clause);
+         GlobalIndicesInsertClause(&(state->wlindices), handle);
       }
    }
    ClauseSetFree(tmp_set);
-   // printf("# ...simplify_watchlist()\n");
 }
 
 
@@ -1623,6 +1627,9 @@ Clause_p ProcessClause(ProofState_p state, ProofControl_p control,
       // ClauseSetIndexedInsert(state->processed_non_units, pclause);
       ClauseSetIndexedInsertClause(state->processed_non_units, pclause->clause);
    }
+   printf("global insert\n");
+   ClausePrint(stdout, clause, true);
+   printf("\n");
    GlobalIndicesInsertClause(&(state->gindices), clause);
 
    FVUnpackClause(pclause);
