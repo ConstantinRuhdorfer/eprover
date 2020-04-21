@@ -440,7 +440,6 @@ void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
             subsumed = ClauseSetFindFirstSubsumedClause(watchlist, clause);
          }
          
-         
          if(subsumed)
          {
             ClauseSetProp(clause, CPSubsumesWatch);
@@ -461,6 +460,10 @@ void check_watchlist(GlobalIndices_p indices, ClauseSet_p watchlist,
                            "extract_subsumed_watched", NULL);   }
       }
       FVUnpackClause(pclause);
+      if(rewrite)
+      {
+         ClauseFree(rewrite);
+      }
       // printf("# ...check_watchlist()\n");
    }
 }
@@ -538,9 +541,9 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
          rewrite = ClauseCopy(handle, state->softsubsumption_rw);
          RewriteConstants(rewrite, state->softsubsumption_rw, 
                           state->watchlist->efficient_subsumption_index->wl_abstraction_symbols);
+         rewrite->weight = ClauseStandardWeight(rewrite);
          ClauseSetIndexedInsertClause(state->watchlist, rewrite);
          GlobalIndicesInsertClause(&(state->wlindices), rewrite);
-         ClauseFree(rewrite);
       }
       else if(state->watchlist->efficient_subsumption_index->wl_skolemsym_abstraction)
       {
@@ -548,9 +551,9 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
          RewriteSkolemSymbols(rewrite, state->softsubsumption_rw, 
                               state->watchlist->efficient_subsumption_index->wl_abstraction_symbols, 
                               state->signature);
+         rewrite->weight = ClauseStandardWeight(rewrite);
          ClauseSetIndexedInsertClause(state->watchlist, rewrite);
          GlobalIndicesInsertClause(&(state->wlindices), rewrite);
-         ClauseFree(rewrite);
       }
       else
       {

@@ -233,7 +233,6 @@ ProofState_p ProofStateAlloc(FunctionProperties free_symb_prop)
    handle->satcheck_encoding_stime = 0.0;
    handle->satcheck_solver_stime   = 0.0;
 
-
    handle->process_clause_loops  = 0;
    handle->watchlist_checks      = 0;
    handle->watchlist_unit_checks = 0;
@@ -338,6 +337,7 @@ void ProofStateInitWatchlist(ProofState_p state, OCB_p ocb,
 {
    ClauseSet_p tmpset;
    Clause_p    handle;
+   Clause_p    rewrite;
 
    if(state->watchlist)
    {
@@ -372,23 +372,27 @@ void ProofStateInitWatchlist(ProofState_p state, OCB_p ocb,
          }
          if(rewriteConstants)
          {
-            Clause_p rewrite = ClauseCopy(handle, state->softsubsumption_rw);
+            rewrite = ClauseCopy(handle, state->softsubsumption_rw);
             RewriteConstants(rewrite, state->softsubsumption_rw, 
                              state->watchlist->efficient_subsumption_index->wl_abstraction_symbols);
             ClauseSetInsert(tmpset, rewrite);
+            ClauseFree(handle);
          }
          else if (rewriteSkolemSym)
          {
-            Clause_p rewrite = ClauseCopy(handle, state->softsubsumption_rw);
+            rewrite = ClauseCopy(handle, state->softsubsumption_rw);
             RewriteSkolemSymbols(rewrite, state->softsubsumption_rw, 
-                                 state->watchlist->efficient_subsumption_index->wl_abstraction_symbols, state->signature);
-            ClauseSetInsert(tmpset, handle);
+                                 state->watchlist->efficient_subsumption_index->wl_abstraction_symbols,
+                                 state->signature);
+            ClauseSetInsert(tmpset, rewrite);
+            ClauseFree(handle);
          }
          else
          {
             ClauseSetInsert(tmpset, handle);
          }
       }
+
       ClauseSetIndexedInsertClauseSet(state->watchlist, tmpset);
       ClauseSetFree(tmpset);
       GlobalIndicesInsertClauseSet(&(state->wlindices), state->watchlist);
