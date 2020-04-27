@@ -490,9 +490,9 @@ ClauseSet_p simplify_watchlist_rewriteables(ProofState_p state,
    {
       // printf("# Simpclause: "); ClausePrint(stdout, clause, true); printf("\n");
       RemoveRewritableClausesIndexed(control->ocb,
-                                    tmp_set, state->archive,
-                                    clause, clause->date,
-                                    &(state->wlindices));
+                                     tmp_set, state->archive,
+                                     clause, clause->date,
+                                     &(state->wlindices));
       // printf("# Simpclause done\n");
    }
    else
@@ -593,15 +593,27 @@ void simplify_watchlist(ProofState_p state, ProofControl_p control,
                         Clause_p clause)
 {
    ClauseSet_p tmp_set;
+   Clause_p    softsubsumption_clause;
 
    if(!ClauseIsDemodulator(clause))
    {
       return;
    }
-   // printf("# simplify_watchlist()...\n");
    tmp_set = ClauseSetAlloc();
-   tmp_set = simplify_watchlist_rewriteables(state, control, clause, tmp_set);
 
+   // TODO: @Schulz
+   if (state->watchlist->esindex->wl_skolemsym_abstraction 
+       || state->watchlist->esindex->wl_constants_abstraction)
+   {
+      softsubsumption_clause = ClauseCopy(clause, state->softsubsumption_rw);
+      tmp_set = simplify_watchlist_rewriteables(state, control, softsubsumption_clause, 
+                                                tmp_set);
+   }
+   else
+   {
+      tmp_set = simplify_watchlist_rewriteables(state, control, clause, tmp_set);
+   }
+   
    if (state->watchlist->esindex->wl_skolemsym_abstraction) 
    {
       simplify_watchlist_handle(state, control, tmp_set, "skolem");
